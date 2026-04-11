@@ -1,29 +1,27 @@
+import { useTranslation } from 'react-i18next'
+
 export default function About() {
+  const { t } = useTranslation()
+
   return (
     <div className="page page-about">
       <header className="page-hero">
-        <h1>About</h1>
-        <p className="page-lead">
-          Scheme Assistant helps you understand government schemes in plain language and discover
-          options that may be relevant for you.
-        </p>
+        <h1>{t('about.title')}</h1>
+        <p className="page-lead">{t('about.lead')}</p>
       </header>
 
       <section className="page-section">
-        <h2>What we do</h2>
+        <h2>{t('about.whatTitle')}</h2>
         <ul className="page-list">
-          <li>Explain schemes in simple language</li>
-          <li>Surface relevant schemes through search and filters</li>
-          <li>Offer quick answers via the chatbot (demo — you can connect AI later)</li>
+          <li>{t('about.li1')}</li>
+          <li>{t('about.li2')}</li>
+          <li>{t('about.li3')}</li>
         </ul>
       </section>
 
       <section className="page-section">
-        <h2>Disclaimer</h2>
-        <p>
-          This tool is for guidance only. Always confirm final eligibility, documents, and how to
-          apply on <strong>official government portals</strong> or through official helplines.
-        </p>
+        <h2>{t('about.disclaimerTitle')}</h2>
+        <p>{t('about.disclaimer')}</p>
       </section>
     </div>
   )

@@ -1,83 +1,55 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import {
-  ArrowRight,
-  Banknote,
-  Database,
-  FileText,
-  IndianRupee,
-  Loader2,
-  MapPin,
-  Search,
-  Sparkles,
-  Tag,
-  UserCircle,
-  Users,
-} from 'lucide-react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, startTransition } from 'react'
+import { ArrowRight, Database, Loader2, Mic, MicOff, Search, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import TranslatedText from '../components/TranslatedText.jsx'
 import { motion as Motion, useReducedMotion } from 'framer-motion'
 import SchemeDetailModal from '../components/SchemeDetailModal.jsx'
-import { COL, filterSchemes, loadSchemesFromCsv, previewText } from '../lib/schemesCsv.js'
+import {
+  COL,
+  filterSchemesAdvanced,
+  loadSchemesFromCsv,
+  previewText,
+  sortSchemesStateOrder,
+  uniqueStatesFromRows,
+} from '../lib/schemesCsv.js'
+import { FACET_IDS, FACET_ORDER, FACET_VALUES } from '../lib/facetValues.js'
+import { getSpeechRecognitionConstructor } from '../lib/speechRecognition.js'
 
-const QUICK_TAGS = ['Agriculture', 'Health', 'Education', 'Housing', 'Women', 'Student']
+const QUICK_TAG_KEYS = ['Agriculture', 'Health', 'Education', 'Housing', 'Women', 'Student']
 
-/** Ways to search — tap to fill the search box (same idea as popular topics). */
-const SEARCH_IDEAS = [
-  {
-    label: 'State or UT',
-    description: 'Schemes for a region — try a state name or “All India”.',
-    query: 'Maharashtra',
-    Icon: MapPin,
-  },
-  {
-    label: 'Pension & seniors',
-    description: 'Old age pension, retirement, and senior benefits.',
-    query: 'pension',
-    Icon: Banknote,
-  },
-  {
-    label: 'Age',
-    description: 'Min / max age in eligibility — e.g. 18, 60, student.',
-    query: '60',
-    Icon: UserCircle,
-  },
-  {
-    label: 'Income & limits',
-    description: 'Income caps, BPL, EWS, or “income limit”.',
-    query: 'income',
-    Icon: IndianRupee,
-  },
-  {
-    label: 'Women & girls',
-    description: 'Gender-focused schemes and girl-child programmes.',
-    query: 'women',
-    Icon: Users,
-  },
-  {
-    label: 'Documents & apply',
-    description: 'What to submit — Aadhaar, certificate, application steps.',
-    query: 'aadhaar',
-    Icon: FileText,
-  },
-  {
-    label: 'Scheme name',
-    description: 'Part of the official title — keywords work too.',
-    query: 'PM-KISAN',
-    Icon: Tag,
-  },
-  {
-    label: 'Benefit type',
-    description: 'Scholarship, loan, subsidy, housing, insurance…',
-    query: 'scholarship',
-    Icon: Sparkles,
-  },
-]
+const INITIAL_FACETS = {
+  state: '',
+  pension: '',
+  age: '',
+  income: '',
+  gender: '',
+  document: '',
+  schemeName: '',
+  benefit: '',
+}
 
 const MIN_QUERY_LEN = 2
 const MAX_RESULTS = 200
 
 const easeOut = [0.22, 1, 0.36, 1]
 
+function facetsActive(f) {
+  return (
+    Boolean(f.state) ||
+    Boolean(f.pension) ||
+    Boolean(f.age) ||
+    Boolean(f.income) ||
+    (f.gender === 'women' || f.gender === 'men') ||
+    Boolean(f.document) ||
+    Boolean(f.schemeName) ||
+    Boolean(f.benefit)
+  )
+}
+
 export default function Home() {
+  const { t, i18n } = useTranslation()
+  const hi = i18n.language === 'hi'
   const reduceMotion = useReducedMotion()
   const [query, setQuery] = useState('')
   const deferredQuery = useDeferredValue(query.trim())
@@ -85,6 +57,67 @@ export default function Home() {
   const [loadState, setLoadState] = useState('loading')
   const [loadError, setLoadError] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [facets, setFacets] = useState(() => ({ ...INITIAL_FACETS }))
+  const [voiceListening, setVoiceListening] = useState(false)
+  const voiceRecRef = useRef(null)
+
+  const speechSupported = useMemo(
+    () => typeof window !== 'undefined' && Boolean(getSpeechRecognitionConstructor()),
+    [],
+  )
+
+  const stopVoice = useCallback(() => {
+    try {
+      voiceRecRef.current?.stop()
+    } catch {
+      /* ignore */
+    }
+    voiceRecRef.current = null
+    setVoiceListening(false)
+  }, [])
+
+  const startVoice = useCallback(() => {
+    const Ctor = getSpeechRecognitionConstructor()
+    if (!Ctor) return
+    stopVoice()
+    const rec = new Ctor()
+    rec.lang = hi ? 'hi-IN' : 'en-IN'
+    rec.interimResults = false
+    rec.continuous = false
+    rec.maxAlternatives = 1
+    rec.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i]
+        if (!res.isFinal) continue
+        const chunk = String(res[0]?.transcript ?? '').trim()
+        if (!chunk) continue
+        setQuery((q) => {
+          const base = q.trim()
+          return base ? `${base} ${chunk}` : chunk
+        })
+      }
+    }
+    rec.onerror = () => stopVoice()
+    rec.onend = () => {
+      voiceRecRef.current = null
+      setVoiceListening(false)
+    }
+    voiceRecRef.current = rec
+    setVoiceListening(true)
+    try {
+      rec.start()
+    } catch {
+      stopVoice()
+    }
+  }, [hi, stopVoice])
+
+  useEffect(() => {
+    return () => stopVoice()
+  }, [stopVoice])
+
+  useEffect(() => {
+    startTransition(() => stopVoice())
+  }, [hi, stopVoice])
 
   useEffect(() => {
     let cancelled = false
@@ -106,14 +139,49 @@ export default function Home() {
     }
   }, [])
 
+  const stateOptions = useMemo(() => uniqueStatesFromRows(rows), [rows])
+
   const filtered = useMemo(() => {
-    if (deferredQuery.length < MIN_QUERY_LEN) return []
-    return filterSchemes(rows, deferredQuery)
-  }, [rows, deferredQuery])
+    const list = filterSchemesAdvanced(rows, {
+      query: deferredQuery,
+      minQueryLen: MIN_QUERY_LEN,
+      state: facets.state,
+      gender: facets.gender,
+      pension: facets.pension,
+      age: facets.age,
+      income: facets.income,
+      document: facets.document,
+      schemeName: facets.schemeName,
+      benefit: facets.benefit,
+    })
+    return sortSchemesStateOrder(list, facets.state)
+  }, [rows, deferredQuery, facets])
 
   const visible = useMemo(() => filtered.slice(0, MAX_RESULTS), [filtered])
   const totalMatches = filtered.length
   const isStale = query.trim() !== deferredQuery
+
+  const hasFacetFilters = facetsActive(facets)
+  const hasActiveFilters = deferredQuery.length >= MIN_QUERY_LEN || hasFacetFilters
+
+  function setFacet(key, value) {
+    setFacets((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function clearAllFilters() {
+    setFacets({ ...INITIAL_FACETS })
+  }
+
+  function stateLabel(st) {
+    const k = `states.${st}`
+    const tr = t(k)
+    return tr === k ? st : tr
+  }
+
+  function facetOptionLabels(facetKey) {
+    const raw = t(`home.facet.${facetKey}.opts`, { returnObjects: true })
+    return Array.isArray(raw) ? raw : []
+  }
 
   return (
     <div className="scheme-app scheme-app--home">
@@ -123,7 +191,7 @@ export default function Home() {
         <div
           className="home-hero__media"
           role="img"
-          aria-label="Community — illustrative background"
+          aria-label={t('home.heroAria')}
         />
         <div className="home-hero__scrim" aria-hidden />
         <div className="home-hero__grain" aria-hidden />
@@ -135,29 +203,54 @@ export default function Home() {
         >
           <div className="home-hero__badge">
             <Sparkles size={14} strokeWidth={2} aria-hidden />
-            <span>Live dataset</span>
+            <span>{t('home.badge')}</span>
           </div>
-          <h1 id="home-hero-title">What can we help you find?</h1>
-          <p className="home-hero__tagline">Search thousands of schemes — instant results below.</p>
+          <h1 id="home-hero-title">{t('home.title')}</h1>
+          <p className="home-hero__tagline">{t('home.tagline')}</p>
 
-          <div className="home-hero__search">
-            <label className="scheme-search scheme-search--hero" htmlFor="scheme-q">
+          <p className="home-hero__search-hint" id="home-search-hint">
+            {t('home.searchModesHint')}
+          </p>
+          <div className="home-hero__search-row">
+            <label className="scheme-search scheme-search--hero home-hero__search-field" htmlFor="scheme-q">
               <Search className="scheme-search-icon" size={20} strokeWidth={2} aria-hidden />
               <input
                 id="scheme-q"
                 type="search"
-                placeholder="Try &quot;farmer&quot;, &quot;Delhi&quot;, or &quot;pension&quot;…"
+                lang={i18n.language}
+                placeholder={t('home.searchPlaceholder')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 autoComplete="off"
                 disabled={loadState !== 'ready'}
+                aria-describedby="home-search-hint"
               />
             </label>
+            <button
+              type="button"
+              className={`home-hero__voice-btn${voiceListening ? ' is-listening' : ''}`}
+              disabled={!speechSupported || loadState !== 'ready'}
+              aria-pressed={voiceListening}
+              aria-label={voiceListening ? t('home.voiceStop') : t('home.voiceStart')}
+              title={!speechSupported ? t('home.voiceUnsupported') : undefined}
+              onClick={() => (voiceListening ? stopVoice() : startVoice())}
+            >
+              {voiceListening ? (
+                <MicOff size={22} strokeWidth={2} aria-hidden />
+              ) : (
+                <Mic size={22} strokeWidth={2} aria-hidden />
+              )}
+            </button>
           </div>
+          {voiceListening ? (
+            <p className="home-hero__voice-status" role="status">
+              {t('home.voiceListening')}
+            </p>
+          ) : null}
 
-          <p className="home-hero__chips-label">Popular topics</p>
-          <div className="home-hero__chips" role="group" aria-label="Quick topics">
-            {QUICK_TAGS.map((tag) => (
+          <p className="home-hero__chips-label">{t('home.popularTopics')}</p>
+          <div className="home-hero__chips" role="group" aria-label={t('home.quickTopicsAria')}>
+            {QUICK_TAG_KEYS.map((tag) => (
               <button
                 key={tag}
                 type="button"
@@ -165,17 +258,17 @@ export default function Home() {
                 onClick={() => setQuery(tag)}
                 disabled={loadState !== 'ready'}
               >
-                {tag}
+                {t(`home.quickTags.${tag}`)}
               </button>
             ))}
           </div>
 
           <div className="home-hero__links">
             <Link to="/chatbot" className="home-hero__pill">
-              Chatbot
+              {t('home.chatbot')}
             </Link>
             <Link to="/features" className="home-hero__pill home-hero__pill--ghost">
-              Features
+              {t('home.features')}
             </Link>
           </div>
         </Motion.div>
@@ -184,44 +277,72 @@ export default function Home() {
       <div className="home-below">
         <section className="home-ideas" aria-labelledby="home-ideas-title">
           <div className="home-ideas__head">
-            <p className="home-ideas__eyebrow">Search ideas</p>
+            <p className="home-ideas__eyebrow">{t('home.filtersEyebrow')}</p>
             <h2 id="home-ideas-title" className="home-ideas__title">
-              What you can search for
+              {t('home.filtersTitle')}
             </h2>
-            <p className="home-ideas__sub">
-              Same as popular topics — tap any card to try an example query. Search runs across name,
-              state, sector, age, income, benefits, documents, and full details.
-            </p>
+            <p className="home-ideas__sub">{t('home.filtersIntro')}</p>
           </div>
-          <ul className="home-ideas__grid">
-            {SEARCH_IDEAS.map((idea) => {
-              const { label, description, query: exampleQuery, Icon: IdeaIcon } = idea
-              return (
-              <li key={label}>
-                <button
-                  type="button"
-                  className="home-idea-card"
-                  onClick={() => setQuery(exampleQuery)}
+
+          <div className="home-filters">
+            <p className="home-filters__title">{t('home.allFilters')}</p>
+            <div className="home-filters__grid home-filters__grid--dense">
+              <div className="home-select-wrap">
+                <label className="home-select-label" htmlFor="facet-state">
+                  {t('home.stateLabel')}
+                </label>
+                <span className="home-select-hint">{t('home.stateHint')}</span>
+                <select
+                  id="facet-state"
+                  className="home-select"
+                  value={facets.state}
+                  onChange={(e) => setFacet('state', e.target.value)}
                   disabled={loadState !== 'ready'}
                 >
-                  <span className="home-idea-card__icon" aria-hidden>
-                    <IdeaIcon size={20} strokeWidth={2} />
-                  </span>
-                  <span className="home-idea-card__body">
-                    <span className="home-idea-card__label">{label}</span>
-                    <span className="home-idea-card__desc">{description}</span>
-                    <span className="home-idea-card__try">
-                      Try: <em>{exampleQuery}</em>
-                    </span>
-                  </span>
-                </button>
-              </li>
-              )
-            })}
-          </ul>
+                  <option value="">{t('home.anyState')}</option>
+                  {stateOptions.map((st) => (
+                    <option key={st} value={st}>
+                      {stateLabel(st)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {FACET_ORDER.map((facetKey) => {
+                const values = FACET_VALUES[facetKey]
+                const labels = facetOptionLabels(facetKey)
+                return (
+                  <div key={facetKey} className="home-select-wrap">
+                    <label className="home-select-label" htmlFor={FACET_IDS[facetKey]}>
+                      {t(`home.facet.${facetKey}.label`)}
+                    </label>
+                    <span className="home-select-hint">{t(`home.facet.${facetKey}.hint`)}</span>
+                    <select
+                      id={FACET_IDS[facetKey]}
+                      className="home-select"
+                      value={facets[facetKey]}
+                      onChange={(e) => setFacet(facetKey, e.target.value)}
+                      disabled={loadState !== 'ready'}
+                    >
+                      {values.map((v, i) => (
+                        <option key={v || `any-${facetKey}`} value={v}>
+                          {labels[i] ?? v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              })}
+            </div>
+            {hasFacetFilters && (
+              <button type="button" className="home-filters__clear" onClick={clearAllFilters}>
+                {t('home.clearFilters')}
+              </button>
+            )}
+          </div>
         </section>
 
-        <section className="scheme-section scheme-section--tight" aria-label="Search results">
+        <section className="scheme-section scheme-section--tight" aria-label={t('home.resultsAria')}>
           {loadState === 'loading' && (
             <div className="scheme-panel scheme-panel--glass">
               <div className="scheme-panel__row">
@@ -229,10 +350,8 @@ export default function Home() {
                   <Loader2 size={22} className="home-spin" aria-hidden />
                 </div>
                 <div className="scheme-panel__body">
-                  <p className="scheme-panel__title">Loading dataset</p>
-                  <p className="scheme-panel__text">
-                    Fetching scheme records — usually just a moment.
-                  </p>
+                  <p className="scheme-panel__title">{t('home.loadingTitle')}</p>
+                  <p className="scheme-panel__text">{t('home.loadingText')}</p>
                 </div>
               </div>
               <div className="home-skeleton" aria-hidden>
@@ -245,60 +364,60 @@ export default function Home() {
 
           {loadState === 'error' && (
             <div className="scheme-panel scheme-panel--error scheme-panel--glass">
-              <p className="scheme-panel__title">Could not load schemes</p>
+              <p className="scheme-panel__title">{t('home.errorTitle')}</p>
               <p className="scheme-panel__text">{loadError}</p>
             </div>
           )}
 
-          {loadState === 'ready' && deferredQuery.length < MIN_QUERY_LEN && (
+          {loadState === 'ready' && !hasActiveFilters && (
             <div className="scheme-panel scheme-panel--glass scheme-panel--accent-edge">
               <div className="scheme-panel__row">
                 <div className="scheme-panel__icon">
                   <Database size={22} strokeWidth={2} aria-hidden />
                 </div>
                 <div className="scheme-panel__body">
-                  <p className="scheme-panel__title">You&apos;re all set</p>
+                  <p className="scheme-panel__title">{t('home.readyTitle')}</p>
                   <p className="scheme-panel__text">
-                    <strong className="scheme-panel__stat">{rows.length.toLocaleString()}</strong>{' '}
-                    schemes indexed. Type at least {MIN_QUERY_LEN} characters or tap a topic — results
-                    show up here. Open any card for full details.
+                    {t('home.readyText', {
+                      count: rows.length.toLocaleString(),
+                      min: MIN_QUERY_LEN,
+                    })}
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {loadState === 'ready' && deferredQuery.length >= MIN_QUERY_LEN && totalMatches === 0 && (
+          {loadState === 'ready' && hasActiveFilters && totalMatches === 0 && (
             <div className="scheme-panel scheme-panel--muted scheme-panel--glass">
-              <p className="scheme-panel__title">No matches yet</p>
-              <p className="scheme-panel__text">
-                Broaden your search — we match name, state, sector, benefits, documents, and full
-                text.
-              </p>
+              <p className="scheme-panel__title">{t('home.noMatchTitle')}</p>
+              <p className="scheme-panel__text">{t('home.noMatchText')}</p>
             </div>
           )}
 
-          {loadState === 'ready' && deferredQuery.length >= MIN_QUERY_LEN && totalMatches > 0 && (
+          {loadState === 'ready' && hasActiveFilters && totalMatches > 0 && (
             <>
               <div className="scheme-section__head scheme-section__head--modern">
                 <div>
-                  <p className="scheme-section__eyebrow">Directory</p>
-                  <h2 className="scheme-section-title">Results</h2>
+                  <p className="scheme-section__eyebrow">{t('home.directoryEyebrow')}</p>
+                  <h2 className="scheme-section-title">{t('home.resultsTitle')}</h2>
                 </div>
                 <span className="scheme-section__count scheme-section__count--pill">
                   {isStale ? (
                     '…'
                   ) : (
                     <>
-                      {totalMatches.toLocaleString()} match{totalMatches === 1 ? '' : 'es'}
-                      {totalMatches > MAX_RESULTS ? ` · top ${MAX_RESULTS}` : ''}
+                      {totalMatches === 1
+                        ? t('home.matchOne', { count: totalMatches })
+                        : t('home.matchMany', { count: totalMatches.toLocaleString() })}
+                      {totalMatches > MAX_RESULTS ? t('home.topN', { n: MAX_RESULTS }) : ''}
                     </>
                   )}
                 </span>
               </div>
               <ul className="scheme-list scheme-list--results">
                 {visible.map((row, i) => (
-                  <li key={`${i}-${row[COL.name]?.slice(0, 40) ?? i}`}>
+                  <li key={`${i18n.language}-${i}-${row[COL.name]?.slice(0, 40) ?? i}`}>
                     <button
                       type="button"
                       className="scheme-result-card"
@@ -307,16 +426,29 @@ export default function Home() {
                       <div className="scheme-result-card__main">
                         <div className="scheme-result-card__top">
                           <span className="scheme-result-card__name">
-                            {row[COL.name] || 'Untitled scheme'}
+                            <TranslatedText
+                              text={row[COL.name] || t('home.untitled')}
+                              active={hi}
+                              as="span"
+                            />
                           </span>
                           {row[COL.state] ? (
-                            <span className="scheme-pill scheme-pill--muted">{row[COL.state]}</span>
+                            <span className="scheme-pill scheme-pill--muted">
+                              {stateLabel(row[COL.state])}
+                            </span>
                           ) : null}
                         </div>
                         {row[COL.occupation] ? (
-                          <p className="scheme-result-card__meta">{row[COL.occupation]}</p>
+                          <p className="scheme-result-card__meta">
+                            <TranslatedText text={String(row[COL.occupation])} active={hi} as="span" />
+                          </p>
                         ) : null}
-                        <p className="scheme-result-card__preview">{previewText(row)}</p>
+                        <TranslatedText
+                          text={previewText(row)}
+                          active={hi}
+                          as="p"
+                          className="scheme-result-card__preview"
+                        />
                       </div>
                       <span className="scheme-result-card__arrow" aria-hidden>
                         <ArrowRight size={18} strokeWidth={2} />
