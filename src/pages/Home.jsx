@@ -14,20 +14,17 @@ import {
   uniqueStatesFromRows,
 } from '../lib/schemesCsv.js'
 import { FACET_IDS, FACET_ORDER, FACET_VALUES } from '../lib/facetValues.js'
+import {
+  getActiveQuickTopicKey,
+  QUICK_TAG_KEYS,
+  QUICK_TOPIC_BASE,
+  QUICK_TOPIC_PRESETS,
+  searchStillMatchesTopicQuery,
+} from '../lib/quickTopicPresets.js'
+import { facetOrderForTopic, facetValuesForTopic } from '../lib/topicFacetUi.js'
 import { getSpeechRecognitionConstructor } from '../lib/speechRecognition.js'
 
-const QUICK_TAG_KEYS = ['Agriculture', 'Health', 'Education', 'Housing', 'Women', 'Student']
-
-const INITIAL_FACETS = {
-  state: '',
-  pension: '',
-  age: '',
-  income: '',
-  gender: '',
-  document: '',
-  schemeName: '',
-  benefit: '',
-}
+const INITIAL_FACETS = { ...QUICK_TOPIC_BASE }
 
 const MIN_QUERY_LEN = 2
 const MAX_RESULTS = 200
@@ -58,6 +55,8 @@ export default function Home() {
   const [loadError, setLoadError] = useState(null)
   const [selected, setSelected] = useState(null)
   const [facets, setFacets] = useState(() => ({ ...INITIAL_FACETS }))
+  /** Topic chip pinned until clear-all or search no longer matches that topic's query prefix. */
+  const [pinnedQuickTopic, setPinnedQuickTopic] = useState(null)
   const [voiceListening, setVoiceListening] = useState(false)
   const voiceRecRef = useRef(null)
 
@@ -141,35 +140,74 @@ export default function Home() {
 
   const stateOptions = useMemo(() => uniqueStatesFromRows(rows), [rows])
 
+  const activeQuickTopic = useMemo(
+    () => getActiveQuickTopicKey(facets, query.trim()),
+    [facets, query],
+  )
+
+  const layoutQuickTopic = useMemo(() => {
+    if (pinnedQuickTopic && searchStillMatchesTopicQuery(query.trim(), pinnedQuickTopic)) {
+      return pinnedQuickTopic
+    }
+    return activeQuickTopic
+  }, [pinnedQuickTopic, query, activeQuickTopic])
+
+  const facetRowOrder = useMemo(() => {
+    const topicOrder = facetOrderForTopic(layoutQuickTopic)
+    return topicOrder ?? FACET_ORDER
+  }, [layoutQuickTopic])
+
+  const effectiveFacets = useMemo(() => {
+    if (!layoutQuickTopic) return facets
+    const next = { ...facets }
+    for (const fk of facetRowOrder) {
+      const allowed = facetValuesForTopic(layoutQuickTopic, fk)
+      if (allowed.length && next[fk] !== '' && !allowed.includes(next[fk])) {
+        next[fk] = ''
+      }
+    }
+    return next
+  }, [facets, layoutQuickTopic, facetRowOrder])
+
   const filtered = useMemo(() => {
     const list = filterSchemesAdvanced(rows, {
       query: deferredQuery,
       minQueryLen: MIN_QUERY_LEN,
-      state: facets.state,
-      gender: facets.gender,
-      pension: facets.pension,
-      age: facets.age,
-      income: facets.income,
-      document: facets.document,
-      schemeName: facets.schemeName,
-      benefit: facets.benefit,
+      state: effectiveFacets.state,
+      gender: effectiveFacets.gender,
+      pension: effectiveFacets.pension,
+      age: effectiveFacets.age,
+      income: effectiveFacets.income,
+      document: effectiveFacets.document,
+      schemeName: effectiveFacets.schemeName,
+      benefit: effectiveFacets.benefit,
     })
-    return sortSchemesStateOrder(list, facets.state)
-  }, [rows, deferredQuery, facets])
+    return sortSchemesStateOrder(list, effectiveFacets.state)
+  }, [rows, deferredQuery, effectiveFacets])
 
   const visible = useMemo(() => filtered.slice(0, MAX_RESULTS), [filtered])
   const totalMatches = filtered.length
   const isStale = query.trim() !== deferredQuery
 
-  const hasFacetFilters = facetsActive(facets)
+  const hasFacetFilters = facetsActive(effectiveFacets)
   const hasActiveFilters = deferredQuery.length >= MIN_QUERY_LEN || hasFacetFilters
+
+  function applyQuickTopic(tagKey) {
+    const preset = QUICK_TOPIC_PRESETS[tagKey]
+    if (!preset) return
+    setPinnedQuickTopic(tagKey)
+    setFacets({ ...preset.facets })
+    setQuery(preset.query)
+  }
 
   function setFacet(key, value) {
     setFacets((prev) => ({ ...prev, [key]: value }))
   }
 
   function clearAllFilters() {
+    setPinnedQuickTopic(null)
     setFacets({ ...INITIAL_FACETS })
+    setQuery('')
   }
 
   function stateLabel(st) {
@@ -181,6 +219,20 @@ export default function Home() {
   function facetOptionLabels(facetKey) {
     const raw = t(`home.facet.${facetKey}.opts`, { returnObjects: true })
     return Array.isArray(raw) ? raw : []
+  }
+
+  function labelForFacetOption(facetKey, value, labelsRow) {
+    const idx = FACET_VALUES[facetKey].indexOf(value)
+    if (idx >= 0) return labelsRow[idx] ?? value
+    return value
+  }
+
+  function topicFacetLabel(facetKey, field) {
+    const baseKey = `home.facet.${facetKey}.${field}`
+    if (!layoutQuickTopic) return t(baseKey)
+    const overKey = `home.topicFacet.${layoutQuickTopic}.${facetKey}.${field}`
+    const tr = t(overKey)
+    return tr === overKey ? t(baseKey) : tr
   }
 
   return (
@@ -249,13 +301,15 @@ export default function Home() {
           ) : null}
 
           <p className="home-hero__chips-label">{t('home.popularTopics')}</p>
+          <p className="home-hero__chips-sub">{t('home.popularTopicsHint')}</p>
           <div className="home-hero__chips" role="group" aria-label={t('home.quickTopicsAria')}>
             {QUICK_TAG_KEYS.map((tag) => (
               <button
                 key={tag}
                 type="button"
-                className="home-hero__chip"
-                onClick={() => setQuery(tag)}
+                className={`home-hero__chip${layoutQuickTopic === tag ? ' is-active' : ''}`}
+                aria-pressed={layoutQuickTopic === tag}
+                onClick={() => applyQuickTopic(tag)}
                 disabled={loadState !== 'ready'}
               >
                 {t(`home.quickTags.${tag}`)}
@@ -279,13 +333,23 @@ export default function Home() {
           <div className="home-ideas__head">
             <p className="home-ideas__eyebrow">{t('home.filtersEyebrow')}</p>
             <h2 id="home-ideas-title" className="home-ideas__title">
-              {t('home.filtersTitle')}
+              {layoutQuickTopic
+                ? t(`home.topicFilters.title.${layoutQuickTopic}`, { defaultValue: t('home.filtersTitle') })
+                : t('home.filtersTitle')}
             </h2>
-            <p className="home-ideas__sub">{t('home.filtersIntro')}</p>
+            <p className="home-ideas__sub">
+              {layoutQuickTopic
+                ? t(`home.topicFilters.intro.${layoutQuickTopic}`, { defaultValue: t('home.filtersIntro') })
+                : t('home.filtersIntro')}
+            </p>
           </div>
 
           <div className="home-filters">
-            <p className="home-filters__title">{t('home.allFilters')}</p>
+            <p className="home-filters__title">
+              {layoutQuickTopic
+                ? t(`home.topicFilters.panelTitle.${layoutQuickTopic}`, { defaultValue: t('home.allFilters') })
+                : t('home.allFilters')}
+            </p>
             <div className="home-filters__grid home-filters__grid--dense">
               <div className="home-select-wrap">
                 <label className="home-select-label" htmlFor="facet-state">
@@ -308,25 +372,25 @@ export default function Home() {
                 </select>
               </div>
 
-              {FACET_ORDER.map((facetKey) => {
-                const values = FACET_VALUES[facetKey]
+              {facetRowOrder.map((facetKey) => {
+                const values = facetValuesForTopic(layoutQuickTopic, facetKey)
                 const labels = facetOptionLabels(facetKey)
                 return (
                   <div key={facetKey} className="home-select-wrap">
                     <label className="home-select-label" htmlFor={FACET_IDS[facetKey]}>
-                      {t(`home.facet.${facetKey}.label`)}
+                      {topicFacetLabel(facetKey, 'label')}
                     </label>
-                    <span className="home-select-hint">{t(`home.facet.${facetKey}.hint`)}</span>
+                    <span className="home-select-hint">{topicFacetLabel(facetKey, 'hint')}</span>
                     <select
                       id={FACET_IDS[facetKey]}
                       className="home-select"
-                      value={facets[facetKey]}
+                      value={effectiveFacets[facetKey]}
                       onChange={(e) => setFacet(facetKey, e.target.value)}
                       disabled={loadState !== 'ready'}
                     >
-                      {values.map((v, i) => (
+                      {values.map((v) => (
                         <option key={v || `any-${facetKey}`} value={v}>
-                          {labels[i] ?? v}
+                          {labelForFacetOption(facetKey, v, labels)}
                         </option>
                       ))}
                     </select>

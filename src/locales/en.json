@@ -39,12 +39,13 @@
     "title": "What can we help you find?",
     "tagline": "Search thousands of schemes — instant results below.",
     "searchPlaceholder": "Try \"farmer\", \"Delhi\", or \"pension\"…",
-    "searchModesHint": "Type below, tap a topic, or use the microphone.",
+    "searchModesHint": "Type below, tap a topic (it fills the search box), or use the microphone.",
     "voiceStart": "Search by voice",
     "voiceStop": "Stop listening",
     "voiceListening": "Listening… speak now",
     "voiceUnsupported": "Voice search is not supported in this browser. Try Chrome or Edge.",
     "popularTopics": "Popular topics",
+    "popularTopicsHint": "Each topic switches the filters below to match that area (they combine with search using AND).",
     "quickTopicsAria": "Quick topics",
     "chatbot": "Chatbot",
     "features": "Features",
@@ -83,8 +84,18 @@
       },
       "income": {
         "label": "Income & limits",
-        "hint": "Income cap, BPL, EWS, limits",
-        "opts": ["Any", "Income", "BPL", "EWS", "Income limit", "Lakh (amounts)"]
+        "hint": "BPL/EWS keywords, or lakh ranges parsed from scheme text (approximate)",
+        "opts": [
+          "Any",
+          "Income",
+          "BPL",
+          "EWS",
+          "Income limit",
+          "Up to ~₹3 lakh",
+          "₹3 lakh – ₹8 lakh",
+          "Above ₹8 lakh",
+          "Lakh in text"
+        ]
       },
       "gender": {
         "label": "Gender focus",
@@ -114,6 +125,170 @@
       "Housing": "Housing",
       "Women": "Women",
       "Student": "Student"
+    },
+    "topicFilters": {
+      "title": {
+        "Agriculture": "Narrow farm & rural schemes",
+        "Health": "Narrow health & insurance schemes",
+        "Education": "Narrow scholarships & learning schemes",
+        "Housing": "Narrow housing & PMAY-related schemes",
+        "Women": "Narrow women-focused schemes",
+        "Student": "Narrow student & youth schemes"
+      },
+      "intro": {
+        "Agriculture": "These filters target agriculture, PM-KISAN, MGNREGA-style wording in the dataset. State still applies first.",
+        "Health": "These filters target coverage, insurance, and hospital-related benefits in scheme text.",
+        "Education": "These filters target scholarships, fees, and school or college support in the text.",
+        "Housing": "These filters target PMAY, subsidies, loans, and home-related benefits — not generic pension filters.",
+        "Women": "Gender and related benefits are emphasised; combine with state for local schemes.",
+        "Student": "Student age bands and scholarships are emphasised; add a keyword if you need a specific course."
+      },
+      "panelTitle": {
+        "Agriculture": "Filters — agriculture view",
+        "Health": "Filters — health view",
+        "Education": "Filters — education view",
+        "Housing": "Filters — housing view",
+        "Women": "Filters — women-focused view",
+        "Student": "Filters — student view"
+      }
+    },
+    "topicFacet": {
+      "Housing": {
+        "schemeName": {
+          "label": "Housing programme",
+          "hint": "PMAY or other housing titles in the dataset"
+        },
+        "benefit": {
+          "label": "Housing benefit",
+          "hint": "Subsidy, loan, grant, or insurance tied to a home"
+        },
+        "income": {
+          "label": "Income / EWS / BPL",
+          "hint": "Caps and categories often used for housing eligibility"
+        },
+        "document": {
+          "label": "Documents to apply",
+          "hint": "Typical proofs for housing applications in the text"
+        },
+        "age": {
+          "label": "Age in eligibility",
+          "hint": "Senior, adult, or family wording in scheme details"
+        }
+      },
+      "Agriculture": {
+        "schemeName": {
+          "label": "Farm / rural scheme",
+          "hint": "PM-KISAN, MGNREGA, or national agriculture titles"
+        },
+        "benefit": {
+          "label": "Support type",
+          "hint": "Subsidy, credit, insurance, or direct benefit"
+        },
+        "income": {
+          "label": "Income category",
+          "hint": "BPL, EWS, or income limits in farmer schemes"
+        },
+        "document": {
+          "label": "Documents & application",
+          "hint": "Land, ID, or bank details mentioned in text"
+        },
+        "age": {
+          "label": "Who it targets",
+          "hint": "Youth farmers, students in agri courses, or seniors"
+        }
+      },
+      "Health": {
+        "schemeName": {
+          "label": "Health programme",
+          "hint": "Ayushman or national health titles"
+        },
+        "benefit": {
+          "label": "Care / coverage type",
+          "hint": "Insurance, cashless care, subsidy, or drugs"
+        },
+        "age": {
+          "label": "Age group",
+          "hint": "Children, adults, or seniors in health text"
+        },
+        "income": {
+          "label": "Income / category",
+          "hint": "BPL, EWS, or family income limits"
+        },
+        "document": {
+          "label": "ID & enrollment",
+          "hint": "Card, certificate, or hospital process wording"
+        }
+      },
+      "Education": {
+        "schemeName": {
+          "label": "Education scheme",
+          "hint": "Scholarship or national education titles"
+        },
+        "benefit": {
+          "label": "Support type",
+          "hint": "Scholarship, fee waiver, loan, or stipend"
+        },
+        "age": {
+          "label": "Learner stage",
+          "hint": "School-age, college, or lifelong learning"
+        },
+        "document": {
+          "label": "Application papers",
+          "hint": "Marksheets, certificates, or bank for stipend"
+        },
+        "income": {
+          "label": "Family income",
+          "hint": "Means-tested or EWS limits in education text"
+        }
+      },
+      "Women": {
+        "gender": {
+          "label": "Women / inclusive schemes",
+          "hint": "Focus on women and girls in scheme wording"
+        },
+        "benefit": {
+          "label": "Main benefit",
+          "hint": "Housing, skill, scholarship, credit, or social security"
+        },
+        "schemeName": {
+          "label": "Programme name",
+          "hint": "Pick a flagship or leave open"
+        },
+        "income": {
+          "label": "Income / category",
+          "hint": "Limits that often apply to women-centric schemes"
+        },
+        "document": {
+          "label": "Documents",
+          "hint": "ID, residence, or category certificates"
+        },
+        "age": {
+          "label": "Age focus",
+          "hint": "Girls, working-age women, or seniors"
+        }
+      },
+      "Student": {
+        "age": {
+          "label": "Student stage",
+          "hint": "School, college, or doctoral-level wording"
+        },
+        "benefit": {
+          "label": "Support type",
+          "hint": "Scholarship, loan, or fee support"
+        },
+        "schemeName": {
+          "label": "Scheme title",
+          "hint": "Scholarship names or national student programmes"
+        },
+        "document": {
+          "label": "Apply with",
+          "hint": "Institute letter, marksheet, or bank account"
+        },
+        "income": {
+          "label": "Income / EWS",
+          "hint": "Family income caps in student schemes"
+        }
+      }
     }
   },
   "states": {

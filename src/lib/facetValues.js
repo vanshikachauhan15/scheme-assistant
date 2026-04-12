@@ -22,7 +22,17 @@ export const FACET_IDS = {
 export const FACET_VALUES = {
   pension: ['', 'pension', 'retirement', 'old age', 'senior'],
   age: ['', '60', '18', 'student', 'child'],
-  income: ['', 'income', 'BPL', 'EWS', 'income limit', 'lakh'],
+  income: [
+    '',
+    'income',
+    'BPL',
+    'EWS',
+    'income limit',
+    'upto 3 lakh',
+    '3 to 8 lakh',
+    'above 8 lakh',
+    'lakh',
+  ],
   gender: ['', 'women', 'men'],
   document: ['', 'aadhaar', 'certificate', 'ration', 'application', 'bank'],
   schemeName: ['', 'PM-KISAN', 'Ayushman', 'PMAY', 'National', 'Scholarship', 'MGNREGA'],

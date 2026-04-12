@@ -116,6 +116,52 @@ export function rowMatchesInColumns(row, needle, keys) {
   return false
 }
 
+const INCOME_RANGE_KEYS = new Set(['upto 3 lakh', '3 to 8 lakh', 'above 8 lakh'])
+
+function lakhAmountsInBlob(blob) {
+  const s = String(blob).toLowerCase()
+  const out = []
+  const re = /(?:rs\.?|₹|inr|rupees?)?\s*(\d+(?:\.\d+)?)\s*(?:lakh|lac)s?\b/gi
+  let m
+  while ((m = re.exec(s)) !== null) {
+    const n = parseFloat(m[1])
+    if (!Number.isNaN(n) && n > 0) out.push(n)
+  }
+  return out
+}
+
+/**
+ * Income dropdown: substring match for plain keys; rupee-lakh ranges use numeric heuristics on scheme text.
+ * @param {Record<string, string>} row
+ * @param {string} incomeKey
+ */
+export function rowMatchesIncomeFacet(row, incomeKey) {
+  if (!incomeKey) return true
+  if (!INCOME_RANGE_KEYS.has(incomeKey)) {
+    return rowMatchesInColumns(row, incomeKey, SEARCH_KEYS)
+  }
+  const blob = rowTextBlob(row)
+  const low = blob.toLowerCase()
+  const nums = lakhAmountsInBlob(blob)
+  switch (incomeKey) {
+    case 'upto 3 lakh':
+      if (nums.some((n) => n > 0 && n < 3.5)) return true
+      if (/\bnot exceeding\b[\s\S]{0,40}\b(1|2|2\.5|3)\b[\s\S]{0,12}\b(lakh|lac)\b/.test(low)) return true
+      if (/\bup\s*to\b[\s\S]{0,40}\b(1|2|2\.5|3)\b[\s\S]{0,12}\b(lakh|lac)\b/.test(low)) return true
+      if (/\bbelow\s+3\b[\s\S]{0,12}\b(lakh|lac)\b/.test(low)) return true
+      return false
+    case '3 to 8 lakh':
+      if (nums.some((n) => n >= 3 && n <= 8)) return true
+      return false
+    case 'above 8 lakh':
+      if (nums.some((n) => n > 8)) return true
+      if (/\b(9|10|11|12|15|18|20|25|30)\s*(lakh|lac)\b/.test(low)) return true
+      return false
+    default:
+      return false
+  }
+}
+
 function ageInNumericRange(row, target) {
   const min = parseFloat(row[COL.minAge])
   const max = parseFloat(row[COL.maxAge])
@@ -213,7 +259,6 @@ export function filterSchemesAdvanced(rows, opts) {
   }
 
   const pensionKeys = [COL.benefits, COL.fullText, COL.name, COL.occupation]
-  const incomeKeys = SEARCH_KEYS
   const documentKeys = [COL.documents, COL.fullText, COL.benefits, COL.name]
   const benefitKeys = [COL.benefits, COL.fullText, COL.name, COL.occupation]
 
@@ -222,7 +267,7 @@ export function filterSchemesAdvanced(rows, opts) {
   if (hasGender) list = list.filter((row) => rowMatchesGender(row, gender))
   if (hasPension) list = list.filter((row) => rowMatchesInColumns(row, pension, pensionKeys))
   if (hasAge) list = list.filter((row) => rowMatchesAgeFacet(row, age))
-  if (hasIncome) list = list.filter((row) => rowMatchesInColumns(row, income, incomeKeys))
+  if (hasIncome) list = list.filter((row) => rowMatchesIncomeFacet(row, income))
   if (hasDocument) list = list.filter((row) => rowMatchesInColumns(row, document, documentKeys))
   if (hasSchemeName) list = list.filter((row) => rowMatchesInColumns(row, schemeName, [COL.name]))
   if (hasBenefit) list = list.filter((row) => rowMatchesInColumns(row, benefit, benefitKeys))
