@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sentence-transformers
+faiss-cpu
+numpy
+requests
+python-multipart
+vosk
+pyttsx3

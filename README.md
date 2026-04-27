@@ -1,16 +1,73 @@
-# React + Vite
+# Scheme Assistant
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project now includes:
+- Existing React frontend with scheme search/filtering
+- New offline Python chatbot backend with:
+  - Query classification (`DISCOVERY` / `INFORMATION`)
+  - RAG over local scheme CSV
+  - Local Ollama response generation in Hindi
+  - Offline voice input/output (Vosk + pyttsx3)
 
-Currently, two official plugins are available:
+## Backend Setup (Offline)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1) Install Python dependencies:
 
-## React Compiler
+```bash
+cd backend
+pip install -r requirements.txt
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2) Download and place Vosk Hindi model:
+- Download: `vosk-model-small-hi-0.22`
+- Extract to: `backend/models/vosk-model-small-hi-0.22`
 
-## Expanding the ESLint configuration
+3) Install and start Ollama:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+ollama pull llama3.1:8b-instruct
+ollama run llama3.1:8b-instruct
+```
+
+Keep Ollama running on default local endpoint `http://127.0.0.1:11434`.
+
+4) Run backend API:
+
+```bash
+cd backend
+uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+## Frontend Setup
+
+From project root:
+
+```bash
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:5173`.
+
+Optional `.env` value for frontend:
+
+```env
+VITE_BACKEND_URL=http://127.0.0.1:8000
+```
+
+## New Chatbot APIs
+
+- `POST /chatbot`
+  - Body: `{ "query": "text", "conversation_id": "optional-id" }`
+  - Returns: `{ "response": "Hindi text" }`
+
+- `POST /voice-chatbot`
+  - FormData: `audio` (file), `conversation_id` (optional)
+  - Returns: `audio/wav` response file
+
+## New Backend Modules
+
+- `backend/chatbot.py` - classification, Hinglish normalization, memory, response orchestration
+- `backend/embeddings.py` - sentence-transformers embeddings + FAISS index
+- `backend/rag.py` - top-k scheme retrieval + context building
+- `backend/voice.py` - Vosk STT + pyttsx3 TTS
+- `backend/main.py` - FastAPI endpoints
