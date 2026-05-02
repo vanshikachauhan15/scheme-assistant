@@ -45,6 +45,169 @@ HINGLISH_MAP = {
 }
 
 
+def _is_hindi_like(text: str) -> bool:
+    return bool(re.search(r"[\u0900-\u097F]", text))
+
+
+def _normalize_text_for_match(text: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\u0900-\u097F\s]", " ", text.lower())).strip()
+
+
+def _contains_phrase(text: str, phrases: list[str]) -> bool:
+    normalized_text = f" {_normalize_text_for_match(text)} "
+    for phrase in phrases:
+        normalized_phrase = _normalize_text_for_match(phrase)
+        if not normalized_phrase:
+            continue
+        if f" {normalized_phrase} " in normalized_text:
+            return True
+    return False
+
+
+def _get_basic_intent_response(query: str) -> tuple[str | None, str | None]:
+    normalized = _normalize_text_for_match(normalize_hinglish(query))
+    hindi_like = _is_hindi_like(query) or _contains_phrase(
+        normalized, ["namaste", "dhanyavad", "shukriya", "madad", "aap", "tum", "kaise", "haal", "theek", "haan"]
+    )
+
+    greeting_phrases = [
+        "hi",
+        "hello",
+        "hey",
+        "hii",
+        "hiii",
+        "namaste",
+        "नमस्ते",
+        "हेलो",
+        "राम राम",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "गुड मॉर्निंग",
+        "गुड आफ्टरनून",
+        "गुड ईवनिंग",
+        "सुप्रभात",
+        "शुभ संध्या",
+    ]
+    capability_phrases = [
+        "what can you do",
+        "how can you help",
+        "help me",
+        "can you help",
+        "आप क्या कर सकते",
+        "तुम क्या कर सकते",
+        "क्या कर सकते हो",
+        "क्या मदद कर सकते",
+        "madad",
+        "help",
+    ]
+    thanks_phrases = ["thanks", "thank you", "thx", "धन्यवाद", "शुक्रिया", "thanks a lot"]
+    bye_phrases = [
+        "bye",
+        "goodbye",
+        "see you",
+        "take care",
+        "good night",
+        "alvida",
+        "अलविदा",
+        "फिर मिलेंगे",
+        "बाय",
+        "शुभ रात्रि",
+        "गुड नाइट",
+    ]
+    wellbeing_phrases = [
+        "how are you",
+        "how r u",
+        "how are u",
+        "kaise ho",
+        "kaisa hai",
+        "kya haal",
+        "क्या हाल",
+        "कैसे हो",
+        "कैसी हो",
+        "कैसा है",
+    ]
+    acknowledge_phrases = [
+        "ok",
+        "okay",
+        "kk",
+        "cool",
+        "great",
+        "nice",
+        "hmm",
+        "hmmm",
+        "acha",
+        "accha",
+        "achha",
+        "theek",
+        "ठीक",
+        "ठीक है",
+        "ओके",
+    ]
+    yes_phrases = ["yes", "yep", "yaa", "haan", "han", "जी", "हाँ", "हां", "yes please"]
+    no_phrases = ["no", "nope", "nah", "nahi", "ना", "नहीं", "मत"]
+
+    if _contains_phrase(normalized, greeting_phrases):
+        if hindi_like:
+            return (
+                "GREETING",
+                "नमस्ते! मैं सरकारी योजनाओं की जानकारी देने में मदद कर सकता हूँ। आप योजना का नाम, पात्रता, लाभ, या आवेदन प्रक्रिया पूछ सकते हैं।",
+            )
+        return (
+            "GREETING",
+            "Hi! I can help with government scheme information. You can ask about scheme names, eligibility, benefits, or application steps.",
+        )
+
+    if _contains_phrase(normalized, capability_phrases):
+        if hindi_like:
+            return (
+                "CAPABILITY",
+                "मैं आपकी इन चीजों में मदद कर सकता हूँ:\n- योजनाएँ ढूँढना\n- पात्रता समझाना\n- लाभ बताना\n- आवेदन प्रक्रिया समझाना\nआप अपनी स्थिति (राज्य, उम्र, आय, श्रेणी) बताकर बेहतर सुझाव ले सकते हैं।",
+            )
+        return (
+            "CAPABILITY",
+            "I can help you with:\n- finding relevant schemes\n- checking eligibility\n- explaining benefits\n- sharing application steps\nFor better suggestions, include your state, age, income, or category.",
+        )
+
+    if _contains_phrase(normalized, wellbeing_phrases):
+        if hindi_like:
+            return (
+                "WELLBEING",
+                "मैं ठीक हूँ, धन्यवाद! 😊\nमैं आपकी सरकारी योजना से जुड़ी मदद के लिए यहाँ हूँ। आप अपनी जरूरत बताइए, जैसे किसान, छात्रवृत्ति, स्वास्थ्य या आवास।",
+            )
+        return (
+            "WELLBEING",
+            "I am doing well, thanks! 😊\nI am here to help with government schemes. Tell me your need, like farmer support, scholarship, health, or housing.",
+        )
+
+    if _contains_phrase(normalized, thanks_phrases):
+        if hindi_like:
+            return ("THANKS", "खुशी हुई मदद करके। अगर चाहें तो मैं और योजनाएँ भी सुझा सकता हूँ।")
+        return ("THANKS", "Glad to help. I can suggest more schemes if you want.")
+
+    if _contains_phrase(normalized, bye_phrases):
+        if hindi_like:
+            return ("BYE", "धन्यवाद! फिर मिलते हैं। जब चाहें योजना से जुड़ा सवाल पूछें।")
+        return ("BYE", "Thanks! See you soon. Ask anytime when you need scheme guidance.")
+
+    if _contains_phrase(normalized, acknowledge_phrases):
+        if hindi_like:
+            return ("ACK", "ठीक है। अब आप योजना का नाम या अपनी प्रोफाइल (राज्य, उम्र, आय) बताएं, मैं सही योजना सुझाऊंगा।")
+        return ("ACK", "Great. Now share a scheme name or your profile (state, age, income), and I will guide you better.")
+
+    if _contains_phrase(normalized, yes_phrases):
+        if hindi_like:
+            return ("YES", "बिलकुल! अपनी जरूरत बताइए, मैं उसी हिसाब से योजना सुझाता हूँ।")
+        return ("YES", "Sure! Tell me your requirement and I will suggest suitable schemes.")
+
+    if _contains_phrase(normalized, no_phrases):
+        if hindi_like:
+            return ("NO", "कोई बात नहीं। जब चाहें योजना, पात्रता या आवेदन प्रक्रिया के बारे में पूछ सकते हैं।")
+        return ("NO", "No problem. Whenever you are ready, ask me about any scheme, eligibility, or application process.")
+
+    return (None, None)
+
+
 def normalize_hinglish(text: str) -> str:
     normalized = text.strip().lower()
     for src, dst in HINGLISH_MAP.items():
@@ -216,9 +379,15 @@ def _fallback_information_answer(item: dict[str, Any]) -> str:
 
 
 def get_chatbot_response(query: str, conversation_id: str = "default") -> str:
+    state = _memory.setdefault(conversation_id, {})
+    basic_intent, basic_response = _get_basic_intent_response(query)
+    if basic_response:
+        if basic_intent == "BYE":
+            state.clear()
+        return basic_response
+
     normalized = normalize_hinglish(query)
     mode = classify_query(normalized)
-    state = _memory.setdefault(conversation_id, {})
 
     if mode == DISCOVERY:
         names = _call_existing_ml_function(normalized)

@@ -330,7 +330,7 @@
     "whatTitle": "What we do",
     "li1": "Explain schemes in simple language",
     "li2": "Surface relevant schemes through search and filters",
-    "li3": "Offer quick answers via the chatbot (demo — you can connect AI later)",
+    "li3": "Offer quick answers via the chatbot",
     "disclaimerTitle": "Disclaimer",
     "disclaimer": "This tool is for guidance only. Always confirm final eligibility, documents, and how to apply on official government portals or through official helplines."
   },
@@ -341,7 +341,7 @@
     "planned": "Planned",
     "idea": "Idea",
     "f1": { "title": "Smart search", "desc": "Find schemes by keyword and category — live on the Home page." },
-    "f2": { "title": "Chatbot", "desc": "Ask questions in natural language; connect real AI / RAG later." },
+    "f2": { "title": "Chatbot", "desc": "Ask questions in natural language and get AI-powered scheme guidance." },
     "f3": { "title": "Eligibility checker", "desc": "Filter by age, income, or state — placeholder for your own rules." },
     "f4": { "title": "Alerts", "desc": "Notifications for new schemes or deadlines — future feature." },
     "f5": { "title": "Community Q&A", "desc": "Share experiences and tips — add with moderation when ready." },
@@ -349,18 +349,18 @@
   },
   "chatbot": {
     "title": "Chatbot",
-    "lead": "Demo replies — connect your API here in production.",
+    "lead": "Ask in natural language and get scheme guidance from the assistant.",
     "placeholder": "Type your message…",
     "messageLabel": "Message",
     "send": "Send",
-    "welcome": "Hi! Ask anything about schemes — I will share basic guidance (demo).",
-    "r_empty": "Type a message and send it — I can help with basic information about schemes (demo).",
+    "welcome": "Hi! Ask anything about schemes — I will help with guidance and details.",
+    "r_empty": "Type a message and send it — I can help with scheme-related information.",
     "r_pmKisan": "PM-KISAN provides direct support to eligible farmer families. Official site: pmkisan.gov.in — use it for registration and status checks.",
     "r_health": "Ayushman Bharat PM-JAY offers cashless treatment coverage for eligible families. See pmjay.gov.in for your card and eligibility.",
     "r_housing": "PMAY has separate tracks for urban and rural beneficiaries. Check pmaymis.gov.in and pmayg.nic.in depending on your area.",
     "r_greeting": "Hi — I am Scheme Assistant. Ask for a scheme name or topic, for example health, farmers, or housing.",
     "r_apply": "Each scheme uses its own official portal. Find a scheme on Home, then open its government website — you will see how to apply and which documents are needed.",
-    "r_default": "I am in demo mode. Search schemes on Home, or try keywords like PM-KISAN, health, or housing. Later you can plug in a real AI API here."
+    "r_default": "I could not find enough details for that query. Try adding scheme name, state, or eligibility details."
   },
   "modal": {
     "close": "Close",
