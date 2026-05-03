@@ -29,6 +29,28 @@ def _pick(row: dict[str, Any], keys: list[str], default: str = "") -> str:
     return default
 
 
+def _compose_eligibility(row: dict[str, str]) -> tuple[str, str, str, str]:
+    base_eligibility = _pick(row, ["Eligibility", "Occupation", "eligibility", "occupation"])
+    min_age = _pick(row, ["Min Age", "Minimum Age", "min_age", "minAge"])
+    max_age = _pick(row, ["Max Age", "Maximum Age", "max_age", "maxAge"])
+    income_limit = _pick(row, ["Income Limit", "income_limit", "incomeLimit"])
+
+    extra_parts: list[str] = []
+    if min_age:
+        extra_parts.append(f"Minimum age: {min_age}")
+    if max_age:
+        extra_parts.append(f"Maximum age: {max_age}")
+    if income_limit:
+        extra_parts.append(f"Income limit: {income_limit}")
+
+    combined = base_eligibility
+    if extra_parts:
+        extra_text = "; ".join(extra_parts)
+        combined = f"{base_eligibility}; {extra_text}" if base_eligibility else extra_text
+
+    return combined, min_age, max_age, income_limit
+
+
 def load_scheme_rows(csv_path: str | Path = DEFAULT_DATASET) -> list[dict[str, str]]:
     path = Path(csv_path)
     if not path.exists():
@@ -41,7 +63,7 @@ def load_scheme_rows(csv_path: str | Path = DEFAULT_DATASET) -> list[dict[str, s
 def build_scheme_document(row: dict[str, str]) -> dict[str, str]:
     name = _pick(row, ["Scheme Name", "name", "scheme_name"], default="अज्ञात योजना")
     description = _pick(row, ["Description", "Full Text", "full_text"])
-    eligibility = _pick(row, ["Eligibility", "Occupation", "eligibility", "occupation"])
+    eligibility, min_age, max_age, income_limit = _compose_eligibility(row)
     benefits = _pick(row, ["Benefits", "benefits"], default="जानकारी उपलब्ध नहीं")
     documents = _pick(row, ["Documents", "documents"])
     state = _pick(row, ["State", "state"])
@@ -62,6 +84,9 @@ def build_scheme_document(row: dict[str, str]) -> dict[str, str]:
         "benefits": benefits,
         "documents": documents,
         "state": state,
+        "min_age": min_age,
+        "max_age": max_age,
+        "income_limit": income_limit,
         "application_process": apply_process,
         "searchable_text": searchable_text,
     }
@@ -104,6 +129,13 @@ class EmbeddingIndex:
         if self.index_path.exists() and self.meta_path.exists():
             self.index = faiss.read_index(str(self.index_path))
             self.metadata = json.loads(self.meta_path.read_text(encoding="utf-8"))
+            # Rebuild when cached metadata is from an older schema.
+            if self.metadata:
+                sample = self.metadata[0]
+                required = {"min_age", "max_age", "income_limit"}
+                if required.issubset(sample.keys()):
+                    return
+            self.build()
             return
         self.build()
 

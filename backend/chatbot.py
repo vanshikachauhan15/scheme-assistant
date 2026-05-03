@@ -369,12 +369,109 @@ def _format_discovery(names: list[str]) -> str:
     return f"आपके लिए संभावित योजनाएं:\n{bullets}"
 
 
+def _split_documents_into_items(text: str) -> list[str]:
+    """Turn raw dataset Documents text into a list of items for bullet rendering."""
+    t = (text or "").strip()
+    if not t:
+        return []
+    t = re.sub(r"[\r\n]+", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+
+    if "Copy of" in t:
+        parts = re.split(r",\s*(?=Copy of)", t)
+        parts = [p.strip() for p in parts if p.strip()]
+        if len(parts) >= 2:
+            return parts
+
+    segments = re.split(r"\.\s+", t)
+    items = []
+    for seg in segments:
+        seg = seg.strip()
+        if seg:
+            items.append(seg.rstrip(".").strip())
+    if len(items) >= 2:
+        return items
+
+    if ";" in t:
+        semi = [x.strip() for x in t.split(";") if x.strip()]
+        if len(semi) >= 2:
+            return semi
+
+    if "," in t:
+        comma_parts = [x.strip() for x in t.split(",") if x.strip()]
+        if len(comma_parts) >= 3 and max(len(p) for p in comma_parts) < 150:
+            return comma_parts
+
+    return [t]
+
+
+def _clean_document_item(item: str) -> str:
+    cleaned = (item or "").strip()
+    if not cleaned:
+        return ""
+    # Remove serial numbering at beginning (e.g., "1", "1.", "1)", "(1)")
+    cleaned = re.sub(r"^\(?\d+\)?[\.\)]?\s*", "", cleaned).strip()
+    # Remove trailing serial numbers added in some rows (e.g., "... details 4")
+    cleaned = re.sub(r"\s+\d+$", "", cleaned).strip()
+    # Trim connector punctuation after stripping numbers.
+    cleaned = cleaned.strip(" -:;,.")
+    return cleaned
+
+
+def _format_documents_bullets(documents: str) -> str:
+    items = _split_documents_into_items(documents)
+    if not items:
+        return ""
+    cleaned_items = []
+    for item in items:
+        cleaned = _clean_document_item(item)
+        if cleaned and not cleaned.isdigit():
+            cleaned_items.append(cleaned)
+    if not cleaned_items:
+        return ""
+    return "\n".join(f"- {item}" for item in cleaned_items)
+
+
+def _documents_section_from_item(item: dict[str, Any]) -> str:
+    bullets = _format_documents_bullets(item.get("documents") or "")
+    if not bullets:
+        return ""
+    return f"Documents required:\n{bullets}"
+
+
+def _combined_eligibility_from_item(item: dict[str, Any]) -> str:
+    base = (item.get("eligibility") or "").strip()
+    min_age = (item.get("min_age") or "").strip()
+    max_age = (item.get("max_age") or "").strip()
+    income_limit = (item.get("income_limit") or "").strip()
+
+    parts: list[str] = []
+    if min_age:
+        parts.append(f"Minimum age: {min_age}")
+    if max_age:
+        parts.append(f"Maximum age: {max_age}")
+    if income_limit:
+        parts.append(f"Income limit: {income_limit}")
+
+    if base and parts:
+        return f"{base}; {'; '.join(parts)}"
+    if base:
+        return base
+    if parts:
+        return "; ".join(parts)
+    return "जानकारी उपलब्ध नहीं"
+
+
 def _fallback_information_answer(item: dict[str, Any]) -> str:
+    doc_block = _documents_section_from_item(item)
+    doc_line = f"\n\n{doc_block}" if doc_block else ""
+    eligibility_text = _combined_eligibility_from_item(item)
     return (
         f"योजना का नाम: {item.get('name', 'जानकारी उपलब्ध नहीं')}\n"
-        f"पात्रता: {item.get('eligibility', 'जानकारी उपलब्ध नहीं') or 'जानकारी उपलब्ध नहीं'}\n"
+        f"पात्रता: {eligibility_text}\n"
         f"लाभ: {item.get('benefits', 'जानकारी उपलब्ध नहीं') or 'जानकारी उपलब्ध नहीं'}\n"
         f"आवेदन प्रक्रिया: {item.get('application_process', 'जानकारी उपलब्ध नहीं') or 'जानकारी उपलब्ध नहीं'}"
+        f"{doc_line}"
     )
 
 
@@ -408,4 +505,9 @@ def get_chatbot_response(query: str, conversation_id: str = "default") -> str:
     answer = generate_response(context=context, query=normalized)
     if answer.strip() == UNKNOWN_MESSAGE and items:
         return _fallback_information_answer(items[0])
-    return answer or UNKNOWN_MESSAGE
+    answer = answer or UNKNOWN_MESSAGE
+    if items and answer.strip() != UNKNOWN_MESSAGE:
+        doc_block = _documents_section_from_item(items[0])
+        if doc_block:
+            answer = f"{answer.rstrip()}\n\n{doc_block}"
+    return answer
