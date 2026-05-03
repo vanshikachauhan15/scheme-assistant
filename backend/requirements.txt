@@ -7,3 +7,4 @@ requests
 python-multipart
 vosk
 pyttsx3
+google-cloud-translate

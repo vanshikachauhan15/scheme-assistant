@@ -40,13 +40,15 @@ def _compose_eligibility(row: dict[str, str]) -> tuple[str, str, str, str]:
         extra_parts.append(f"Minimum age: {min_age}")
     if max_age:
         extra_parts.append(f"Maximum age: {max_age}")
+    if not min_age and not max_age:
+        extra_parts.append("No age limit")
     if income_limit:
         extra_parts.append(f"Income limit: {income_limit}")
+    else:
+        extra_parts.append("No income limit")
 
-    combined = base_eligibility
-    if extra_parts:
-        extra_text = "; ".join(extra_parts)
-        combined = f"{base_eligibility}; {extra_text}" if base_eligibility else extra_text
+    combined_parts = ([base_eligibility] if base_eligibility else []) + extra_parts
+    combined = "; ".join([part for part in combined_parts if part])
 
     return combined, min_age, max_age, income_limit
 
@@ -67,7 +69,7 @@ def build_scheme_document(row: dict[str, str]) -> dict[str, str]:
     benefits = _pick(row, ["Benefits", "benefits"], default="जानकारी उपलब्ध नहीं")
     documents = _pick(row, ["Documents", "documents"])
     state = _pick(row, ["State", "state"])
-    apply_process = _pick(row, ["Application Process", "How to Apply", "apply_process"], default="ऑनलाइन या CSC के माध्यम से आवेदन करें")
+    apply_process = _pick(row, ["Application Process", "How to Apply", "apply_process"], default="Apply online or through CSC")
     searchable_text = (
         f"Scheme Name: {name}\n"
         f"Description: {description}\n"

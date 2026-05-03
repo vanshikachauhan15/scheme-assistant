@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .chatbot import get_chatbot_response
+from .translate import parse_and_translate_response
 from .voice import speech_to_text, text_to_speech
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,10 +30,29 @@ class ChatRequest(BaseModel):
     conversation_id: str = "default"
 
 
+class TranslateRequest(BaseModel):
+    text: str
+    target_language: str = "hi"
+
+
 @app.post("/chatbot")
 def chatbot_endpoint(payload: ChatRequest) -> dict[str, str]:
     response = get_chatbot_response(payload.query, conversation_id=payload.conversation_id)
     return {"response": response}
+
+
+@app.post("/translate")
+def translate_endpoint(payload: TranslateRequest) -> dict[str, str]:
+    import sys
+    try:
+        print(f"Translation request received. Text length: {len(payload.text)}", file=sys.stderr)
+        translated = parse_and_translate_response(payload.text, payload.target_language)
+        print(f"Translation successful. Result length: {len(translated)}", file=sys.stderr)
+        return {"translated": translated}
+    except Exception as exc:
+        error_detail = f"Translation error: {str(exc)}"
+        print(f"ERROR: {error_detail}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=error_detail) from exc
 
 
 @app.post("/voice-chatbot")
@@ -74,5 +94,10 @@ async def speech_to_text_endpoint(audio: UploadFile = File(...)) -> dict[str, st
     try:
         text = speech_to_text(temp_path)
         return {"text": text.strip()}
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=f"Missing dependency: {str(exc)}") from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        import sys
+        exc_info = f"{type(exc).__name__}: {str(exc)}"
+        print(f"Speech-to-text error: {exc_info}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=exc_info) from exc

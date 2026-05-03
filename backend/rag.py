@@ -21,12 +21,12 @@ class SchemeRAG:
         for idx, item in enumerate(items, start=1):
             chunks.append(
                 (
-                    f"[{idx}] योजना का नाम: {item.get('name', '')}\n"
-                    f"विवरण: {item.get('description', '')}\n"
-                    f"पात्रता: {item.get('eligibility', '')}\n"
-                    f"लाभ: {item.get('benefits', '')}\n"
-                    f"आवेदन प्रक्रिया: {item.get('application_process', '')}\n"
-                    f"राज्य: {item.get('state', '')}"
+                    f"[{idx}] Scheme name: {item.get('name', '')}\n"
+                    f"Description: {item.get('description', '')}\n"
+                    f"Eligibility: {item.get('eligibility', '')}\n"
+                    f"Benefits: {item.get('benefits', '')}\n"
+                    f"Application process: {item.get('application_process', '')}\n"
+                    f"State: {item.get('state', '')}"
                 )
             )
         return "\n\n".join(chunks)

@@ -11,7 +11,7 @@ from .rag import SchemeRAG
 
 DISCOVERY = "DISCOVERY"
 INFORMATION = "INFORMATION"
-UNKNOWN_MESSAGE = "माफ कीजिए, यह जानकारी उपलब्ध नहीं है"
+UNKNOWN_MESSAGE = "Sorry, this information is not available"
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_MODEL = "phi3"
 
@@ -340,14 +340,13 @@ def _call_existing_ml_function(query: str) -> list[str]:
 
 def generate_response(context: str, query: str) -> str:
     prompt = (
-        "आप एक सरकारी योजना सहायक हैं।\n"
-        "केवल दिए गए Context से उत्तर दें।\n"
-        f"यदि जानकारी context में न मिले तो सिर्फ यह लिखें: {UNKNOWN_MESSAGE}\n"
-        "उत्तर सरल हिंदी में दें और यह फॉर्मेट रखें:\n"
-        "योजना का नाम\n"
-        "पात्रता\n"
-        "लाभ\n"
-        "आवेदन प्रक्रिया\n\n"
+        "You are a government scheme assistant.\n"
+        "Answer only from the given Context.\n"
+        f"If information is not found in context, write only: {UNKNOWN_MESSAGE}\n"
+        "Give answer in simple English and maintain this format:\n"
+        "Scheme name\n"
+        "Eligibility\n"
+        "Benefits\n\n"
         f"Context:\n{context}\n\n"
         f"User Query: {query}"
     )
@@ -363,10 +362,10 @@ def generate_response(context: str, query: str) -> str:
 
 def _format_discovery(names: list[str]) -> str:
     if not names:
-        return "आपके प्रश्न के लिए अभी कोई योजना नहीं मिली। कृपया और विवरण दें।"
+        return "No schemes found for your query. Please provide more details."
     top = names[:5]
     bullets = "\n".join([f"- {name}" for name in top])
-    return f"आपके लिए संभावित योजनाएं:\n{bullets}"
+    return f"Possible schemes for you:\n{bullets}"
 
 
 def _split_documents_into_items(text: str) -> list[str]:
@@ -445,21 +444,24 @@ def _combined_eligibility_from_item(item: dict[str, Any]) -> str:
     max_age = (item.get("max_age") or "").strip()
     income_limit = (item.get("income_limit") or "").strip()
 
-    parts: list[str] = []
+    age_parts: list[str] = []
     if min_age:
-        parts.append(f"Minimum age: {min_age}")
+        age_parts.append(f"Minimum age: {min_age}")
     if max_age:
-        parts.append(f"Maximum age: {max_age}")
+        age_parts.append(f"Maximum age: {max_age}")
+    if not min_age and not max_age:
+        age_parts.append("No age limit")
+
+    parts: list[str] = age_parts
     if income_limit:
         parts.append(f"Income limit: {income_limit}")
+    else:
+        parts.append("No income limit")
 
-    if base and parts:
-        return f"{base}; {'; '.join(parts)}"
+    combined = "; ".join(parts)
     if base:
-        return base
-    if parts:
-        return "; ".join(parts)
-    return "जानकारी उपलब्ध नहीं"
+        return f"{base}; {combined}"
+    return combined
 
 
 def _fallback_information_answer(item: dict[str, Any]) -> str:
@@ -467,10 +469,9 @@ def _fallback_information_answer(item: dict[str, Any]) -> str:
     doc_line = f"\n\n{doc_block}" if doc_block else ""
     eligibility_text = _combined_eligibility_from_item(item)
     return (
-        f"योजना का नाम: {item.get('name', 'जानकारी उपलब्ध नहीं')}\n"
-        f"पात्रता: {eligibility_text}\n"
-        f"लाभ: {item.get('benefits', 'जानकारी उपलब्ध नहीं') or 'जानकारी उपलब्ध नहीं'}\n"
-        f"आवेदन प्रक्रिया: {item.get('application_process', 'जानकारी उपलब्ध नहीं') or 'जानकारी उपलब्ध नहीं'}"
+        f"Scheme name: {item.get('name', 'Information not available')}\n"
+        f"Eligibility: {eligibility_text}\n"
+        f"Benefits: {item.get('benefits', 'Information not available') or 'Information not available'}"
         f"{doc_line}"
     )
 

@@ -37,23 +37,40 @@ def _to_wav(input_path: Path) -> Path:
 def speech_to_text(audio_file: str | Path) -> str:
     src = Path(audio_file)
     if not VOSK_MODEL_PATH.exists():
-        raise FileNotFoundError(f"Vosk Hindi model not found at: {VOSK_MODEL_PATH}")
-    wav_path = _to_wav(src)
-    model = Model(str(VOSK_MODEL_PATH))
+        raise FileNotFoundError(
+            f"Vosk Hindi model not found at: {VOSK_MODEL_PATH}\n"
+            f"Please download the model from https://alphacephei.com/vosk/models"
+        )
+    try:
+        wav_path = _to_wav(src)
+    except FileNotFoundError as e:
+        raise RuntimeError(f"FFmpeg not installed or audio conversion failed: {e}") from e
+    except Exception as e:
+        raise RuntimeError(f"Failed to convert audio to WAV: {e}") from e
+    
+    try:
+        model = Model(str(VOSK_MODEL_PATH))
+    except Exception as e:
+        raise RuntimeError(f"Failed to load Vosk model: {e}") from e
+    
     result_text = ""
-    with wave.open(str(wav_path), "rb") as wf:
-        rec = KaldiRecognizer(model, wf.getframerate())
-        while True:
-            data = wf.readframes(4000)
-            if not data:
-                break
-            if rec.AcceptWaveform(data):
-                part = json.loads(rec.Result()).get("text", "").strip()
-                if part:
-                    result_text = f"{result_text} {part}".strip()
-        final = json.loads(rec.FinalResult()).get("text", "").strip()
-        if final:
-            result_text = f"{result_text} {final}".strip()
+    try:
+        with wave.open(str(wav_path), "rb") as wf:
+            rec = KaldiRecognizer(model, wf.getframerate())
+            while True:
+                data = wf.readframes(4000)
+                if not data:
+                    break
+                if rec.AcceptWaveform(data):
+                    part = json.loads(rec.Result()).get("text", "").strip()
+                    if part:
+                        result_text = f"{result_text} {part}".strip()
+            final = json.loads(rec.FinalResult()).get("text", "").strip()
+            if final:
+                result_text = f"{result_text} {final}".strip()
+    except Exception as e:
+        raise RuntimeError(f"Speech recognition failed: {e}") from e
+    
     return result_text
 
 

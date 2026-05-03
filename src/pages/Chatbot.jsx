@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Mic, MicOff, Send, Volume2 } from 'lucide-react'
+import { Mic, MicOff, Send, Volume2, Languages } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 const API_BASE = (import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
@@ -28,6 +28,7 @@ export default function Chatbot() {
   const conversationIdRef = useRef(getConversationId())
   const bottomRef = useRef(null)
   const [speakingIndex, setSpeakingIndex] = useState(null)
+  const [translatingIndex, setTranslatingIndex] = useState(null)
 
   const isSpeechSupported = typeof window !== 'undefined' && 'speechSynthesis' in window
 
@@ -97,6 +98,42 @@ export default function Chatbot() {
     utterance.onend = () => setSpeakingIndex(null)
     utterance.onerror = () => setSpeakingIndex(null)
     window.speechSynthesis.speak(utterance)
+  }
+
+  async function translateBotMessage(text, index) {
+    if (!text || !text.trim()) return
+    setTranslatingIndex(index)
+    try {
+      console.log('Starting translation for message at index:', index)
+      const res = await fetch(`${API_BASE}/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, target_language: 'hi' }),
+      })
+      console.log('Translation response status:', res.status)
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('Translation error response:', errorText)
+        throw new Error(`HTTP ${res.status}: ${errorText}`)
+      }
+      const data = await res.json()
+      console.log('Translation successful, translated text length:', data.translated?.length || 'unknown')
+      if (!data.translated) {
+        throw new Error('No translated text in response')
+      }
+      setMessages((m) => {
+        const updated = [...m]
+        if (updated[index] && updated[index].role === 'bot') {
+          updated[index] = { ...updated[index], text: data.translated }
+        }
+        return updated
+      })
+    } catch (err) {
+      console.error('Translation failed:', err)
+      setMessages((m) => [...m, { role: 'bot', text: `❌ अनुवाद विफल: ${err.message}` }])
+    } finally {
+      setTranslatingIndex(null)
+    }
   }
 
   async function send() {
@@ -245,17 +282,30 @@ export default function Chatbot() {
                 )}
               </div>
               {msg.role === 'bot' && (
-                <button
-                  type="button"
-                  className="chat-speak"
-                  onClick={() => speakBotMessage(msg.text, i)}
-                  aria-label="Listen to response"
-                  title="Listen to response"
-                  disabled={!isSpeechSupported}
-                >
-                  <Volume2 size={16} />
-                  <span>{speakingIndex === i ? 'Playing...' : 'Listen'}</span>
-                </button>
+                <div className="chat-actions">
+                  <button
+                    type="button"
+                    className="chat-speak"
+                    onClick={() => speakBotMessage(msg.text, i)}
+                    aria-label="Listen to response"
+                    title="Listen to response"
+                    disabled={!isSpeechSupported}
+                  >
+                    <Volume2 size={16} />
+                    <span>{speakingIndex === i ? 'Playing...' : 'Listen'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-translate"
+                    onClick={() => translateBotMessage(msg.text, i)}
+                    aria-label="Translate to Hindi"
+                    title="Translate to Hindi"
+                    disabled={translatingIndex === i}
+                  >
+                    <Languages size={16} />
+                    <span>{translatingIndex === i ? 'Translating...' : 'Translate'}</span>
+                  </button>
+                </div>
               )}
             </div>
           ))}
