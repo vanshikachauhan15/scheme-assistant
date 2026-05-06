@@ -24,8 +24,8 @@ pip install -r requirements.txt
 3) Install and start Ollama:
 
 ```bash
-ollama pull llama3.1:8b-instruct
-ollama run llama3.1:8b-instruct
+ollama pull phi3
+ollama run phi3
 ```
 
 Keep Ollama running on default local endpoint `http://127.0.0.1:11434`.
@@ -46,19 +46,19 @@ npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173` and is also reachable from other devices on the same local network at `http://<PC_IP>:5173`.
+Frontend runs at `http://localhost:5175` and is also reachable from other devices on the same local network at `http://<PC_IP>:5175`.
 
 If the site still shows `ERR_CONNECTION_REFUSED` on your phone:
 
 - Make sure the dev server is running and the terminal shows a Vite URL.
 - Confirm your PC local IP with `ipconfig` and use that IP in the browser.
-- Allow port `5173` through Windows Firewall if needed.
-- Use `http://<PC_IP>:5173`, not `localhost`, on the mobile device.
+- Allow port `5175` through Windows Firewall if needed.
+- Use `http://<PC_IP>:5175`, not `localhost`, on the mobile device.
 
 If you want the frontend to talk to the backend over the network, create a file named `.env` in the project root (same folder as `package.json`) and add your laptop IP like this:
 
 ```env
-VITE_BACKEND_URL=http://10.64.44.6:8000
+VITE_BACKEND_URL=http://<PC_IP>:8000
 ```
 
 Use the actual IP that appears in `ipconfig` for your WiFi adapter. Do not include the angle brackets `< >`.
