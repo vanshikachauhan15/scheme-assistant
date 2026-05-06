@@ -34,7 +34,7 @@ Keep Ollama running on default local endpoint `http://127.0.0.1:11434`.
 
 ```bash
 cd backend
-uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Frontend Setup
@@ -46,12 +46,27 @@ npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`.
+Frontend runs at `http://localhost:5173` and is also reachable from other devices on the same local network at `http://<PC_IP>:5173`.
 
-Optional `.env` value for frontend:
+If the site still shows `ERR_CONNECTION_REFUSED` on your phone:
+
+- Make sure the dev server is running and the terminal shows a Vite URL.
+- Confirm your PC local IP with `ipconfig` and use that IP in the browser.
+- Allow port `5173` through Windows Firewall if needed.
+- Use `http://<PC_IP>:5173`, not `localhost`, on the mobile device.
+
+If you want the frontend to talk to the backend over the network, create a file named `.env` in the project root (same folder as `package.json`) and add your laptop IP like this:
 
 ```env
-VITE_BACKEND_URL=http://127.0.0.1:8000
+VITE_BACKEND_URL=http://10.64.44.6:8000
+```
+
+Use the actual IP that appears in `ipconfig` for your WiFi adapter. Do not include the angle brackets `< >`.
+
+Then restart the frontend server:
+
+```bash
+npm run dev
 ```
 
 ## New Chatbot APIs
@@ -71,3 +86,4 @@ VITE_BACKEND_URL=http://127.0.0.1:8000
 - `backend/rag.py` - top-k scheme retrieval + context building
 - `backend/voice.py` - Vosk STT + pyttsx3 TTS
 - `backend/main.py` - FastAPI endpoints
+http://172.25.89.6:8000/docs
