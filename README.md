@@ -1,12 +1,13 @@
 # Scheme Assistant
 
-This project now includes:
-- Existing React frontend with scheme search/filtering
-- New offline Python chatbot backend with:
-  - Query classification (`DISCOVERY` / `INFORMATION`)
-  - RAG over local scheme CSV
-  - Local Ollama response generation in Hindi
-  - Offline voice input/output (Vosk + pyttsx3)
+Features
+
+- React frontend for scheme search, filtering, and browsing
+- FastAPI backend with a scheme-aware chatbot and RAG retrieval from `cleaned_schemes.csv`
+- FAISS-based semantic search over scheme metadata
+- Local Ollama integration for Hindi chatbot responses
+- Hindi speech input via Vosk and Hindi audio output via pyttsx3
+- Translation utilities for converting chatbot output into Hindi-friendly labels
 
 ## Backend Setup (Offline)
 

@@ -340,12 +340,12 @@
     "live": "Live",
     "planned": "Planned",
     "idea": "Idea",
-    "f1": { "title": "Smart search", "desc": "Find schemes by keyword and category — live on the Home page." },
-    "f2": { "title": "Chatbot", "desc": "Ask questions in natural language and get AI-powered scheme guidance." },
-    "f3": { "title": "Eligibility checker", "desc": "Filter by age, income, or state — placeholder for your own rules." },
-    "f4": { "title": "Alerts", "desc": "Notifications for new schemes or deadlines — future feature." },
-    "f5": { "title": "Community Q&A", "desc": "Share experiences and tips — add with moderation when ready." },
-    "f6": { "title": "Guides", "desc": "Step-by-step PDFs or articles on how to apply." }
+    "f1": { "title": "Smart search", "desc": "Search schemes by keyword, category, and filters from the Home page." },
+    "f2": { "title": "Chatbot", "desc": "Get scheme guidance in natural language with AI-backed answers." },
+    "f3": { "title": "Voice search", "desc": "Speak your query on the Home page for faster scheme discovery." },
+    "f4": { "title": "Hindi translation", "desc": "View translated scheme details and chatbot text in Hindi." },
+    "f5": { "title": "Local dataset", "desc": "Browse thousands of indexed government schemes from the CSV." },
+    "f6": { "title": "Google login", "desc": "Sign in with Google to save your session and return later." }
   },
   "chatbot": {
     "title": "Chatbot",

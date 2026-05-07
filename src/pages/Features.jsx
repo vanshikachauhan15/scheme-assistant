@@ -1,13 +1,13 @@
-import { Search, MessageCircle, Bell, FileCheck, Users, BookOpen } from 'lucide-react'
+import { Search, MessageCircle, Mic, Globe, Database, UserCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 const items = [
   { icon: Search, fkey: 'f1', statusKey: 'live' },
   { icon: MessageCircle, fkey: 'f2', statusKey: 'live' },
-  { icon: FileCheck, fkey: 'f3', statusKey: 'planned' },
-  { icon: Bell, fkey: 'f4', statusKey: 'planned' },
-  { icon: Users, fkey: 'f5', statusKey: 'idea' },
-  { icon: BookOpen, fkey: 'f6', statusKey: 'idea' },
+  { icon: Mic, fkey: 'f3', statusKey: 'live' },
+  { icon: Globe, fkey: 'f4', statusKey: 'live' },
+  { icon: Database, fkey: 'f5', statusKey: 'live' },
+  { icon: UserCircle, fkey: 'f6', statusKey: 'live' },
 ]
 
 export default function Features() {
