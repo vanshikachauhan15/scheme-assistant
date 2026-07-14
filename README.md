@@ -34,7 +34,6 @@ Keep Ollama running on default local endpoint `http://127.0.0.1:11434`.
 4) Run backend API:
 
 ```bash
-cd backend
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
