@@ -87,3 +87,8 @@ npm run dev
 - `backend/voice.py` - Vosk STT + pyttsx3 TTS
 - `backend/main.py` - FastAPI endpoints
 http://172.25.89.6:8000/docs
+
+##Images
+<img width="901" height="906" alt="image" src="https://github.com/user-attachments/assets/095213f1-1047-4617-88a2-701592750d21" />
+
+
